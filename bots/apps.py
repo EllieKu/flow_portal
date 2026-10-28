@@ -6,3 +6,6 @@ class BotsConfig(AppConfig):
     name = "bots"
     verbose_name = "Bot 管理"
 
+    def ready(self):
+        from . import signals  # noqa: F401
+

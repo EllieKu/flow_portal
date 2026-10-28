@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}我的 Bot · Flow Portal{% endblock %}
+
+{% block content %}
+<section aria-labelledby="bots-title">
+  <h1 id="bots-title">我的 Bot</h1>
+  <p class="muted">選擇您要使用的 Bot。</p>
+  <div class="bot-grid">
+    {% for bot in bots %}
+      <article class="card">
+        <h2><a href="{{ bot.get_absolute_url }}">{{ bot.name }}</a></h2>
+        {% if bot.description %}<p class="bot-description">{{ bot.description }}</p>{% endif %}
+        <a href="{{ bot.get_absolute_url }}">開啟 Bot</a>
+      </article>
+    {% empty %}
+      <div class="card"><p>目前沒有可使用的 Bot，請聯絡管理員設定使用權限。</p></div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+

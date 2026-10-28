@@ -94,6 +94,16 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Local development / single-process cache. A shared backend is needed for
+# immediate invalidation across workers; other processes expire entries by TTL.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "flow-portal-grants",
+    },
+}
+BOT_GRANT_CACHE_TTL = 60
+
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG

@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ bot.name }} · Flow Portal{% endblock %}
+
+{% block content %}
+<a href="{% url 'bots:list' %}">返回 Bot 清單</a>
+<section class="card" aria-labelledby="bot-title">
+  <h1 id="bot-title">{{ bot.name }}</h1>
+  {% if bot.description %}<p class="bot-description">{{ bot.description }}</p>{% endif %}
+  <p class="muted">聊天功能將於下一階段提供。</p>
+</section>
+{% endblock %}
+
