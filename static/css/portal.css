@@ -1,0 +1,20 @@
+:root { font-family: system-ui, sans-serif; color: #19312c; background: #f4f7f6; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: #146b54; text-underline-offset: .2em; }
+.site-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1.25rem 5%; border-bottom: 1px solid #dce5e1; background: white; }
+.brand { font-size: 1.25rem; font-weight: 700; text-decoration: none; }
+nav { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+main { max-width: 64rem; margin: 3rem auto; padding: 0 1.25rem; }
+.card { padding: 2rem; background: white; border: 1px solid #dce5e1; border-radius: .75rem; }
+.login-card { max-width: 28rem; margin: 0 auto; }
+h1 { font-size: 1.6rem; margin-top: 0; }
+.muted { color: #54665f; line-height: 1.6; }
+.field { margin: 1.25rem 0; }
+label { display: block; margin-bottom: .5rem; }
+input:not([type=hidden]) { width: 100%; border: 1px solid #899b92; border-radius: .35rem; padding: .75rem; font: inherit; }
+button { background: #17634d; color: white; border: 1px solid #17634d; border-radius: .35rem; padding: .65rem 1rem; font: inherit; cursor: pointer; }
+.secondary { background: white; color: #17634d; }
+:focus-visible { outline: 3px solid #b17312; outline-offset: 3px; }
+.error { color: #a02828; line-height: 1.5; }
+.error ul { padding-left: 1.25rem; }
