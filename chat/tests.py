@@ -10,6 +10,7 @@ from django.core.cache import cache
 from django.test import AsyncClient, RequestFactory, SimpleTestCase, TestCase, tag
 from django.urls import reverse
 
+from bots.access import authorized_bot, available_bots
 from bots.models import Bot
 
 from . import views
@@ -169,6 +170,47 @@ class DifyAdapterTests(SimpleTestCase):
             adapter = self.adapter(httpx.Response(200, json={"data": []}))
             asyncio.run(adapter.list_conversations())
         self.assertEqual(self.requests[0].headers["authorization"], "Bearer DIFY_TEST_KEY")
+
+
+@skipIf(httpx is None, "Install requirements.txt to test the HTTPX Dify adapter")
+class DifyApplicationSwitchTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = get_user_model().objects.create_user(username="switch-member")
+        self.bot = Bot.objects.create(
+            name="Switchable",
+            api_base_url="https://old-dify.example.test/v1",
+            api_key="app-old-key",
+        )
+        self.bot.allowed_users.add(self.user)
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_new_requests_use_updated_application_even_with_cached_grant(self):
+        # Warm the grant cache, then update only the upstream application settings.
+        self.assertEqual(list(available_bots(self.user)), [self.bot])
+        Bot.objects.filter(pk=self.bot.pk).update(
+            api_base_url="https://new-dify.example.test/v1",
+            api_key="app-new-key",
+        )
+        requests = []
+
+        def handler(request):
+            requests.append(request)
+            return httpx.Response(200, json={"data": [], "has_more": False})
+
+        current_bot = authorized_bot(self.user, self.bot.pk)
+        adapter = DifyAdapter(
+            current_bot,
+            self.user.dify_user_id,
+            transport=httpx.MockTransport(handler),
+        )
+        result = asyncio.run(adapter.list_conversations())
+
+        self.assertEqual(result["data"], [])
+        self.assertEqual(requests[0].url.host, "new-dify.example.test")
+        self.assertEqual(requests[0].headers["authorization"], "Bearer app-new-key")
 
 
 class ChatViewTests(SimpleTestCase):

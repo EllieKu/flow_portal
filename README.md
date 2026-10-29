@@ -31,6 +31,8 @@ python manage.py runserver
 - 管理後台：http://127.0.0.1:8002/admin/
 - Bot 清單：http://127.0.0.1:8002/bots/（登入後首頁亦顯示清單）
 
+正式環境的單機部署方式見 [DEPLOYMENT.md](DEPLOYMENT.md)。
+
 ## 測試
 
 ```bash
@@ -48,6 +50,7 @@ python manage.py test
 | `DJANGO_SECRET_KEY` | 必填；正式環境請提供獨立且固定的隨機密鑰 |
 | `DJANGO_DEBUG` | 預設關閉；本機 HTTP 開發設為 `1` |
 | `DJANGO_ALLOWED_HOSTS` | 允許的主機名稱，以逗號分隔 |
+| `DJANGO_BEHIND_HTTPS_PROXY` | 由可信任的 HTTPS 反向代理提供服務時設為 `1` |
 | `SQLITE_PATH` | SQLite 檔案位置，預設為專案根目錄 `db.sqlite3`；相對路徑以專案根目錄為準 |
 | `DIFY_READ_TIMEOUT` | 等待 Dify 串流資料的逾時秒數，預設為 `120` |
 
