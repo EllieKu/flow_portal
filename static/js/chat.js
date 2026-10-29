@@ -7,6 +7,7 @@ const conversations = byId("conversations");
 const status = byId("chat-status");
 const query = byId("query");
 const csrf = app.querySelector("[name=csrfmiddlewaretoken]").value;
+let assistantMark = "Bot";
 let conversationId = "";
 let taskId = "";
 let historyCursor = "";
@@ -20,14 +21,42 @@ let listLoading = false;
 function notice(text, error = false) {
   status.textContent = text;
   status.className = error ? "error" : "muted";
+  status.hidden = !text;
+}
+
+function updateEmptyState() {
+  byId("chat-empty").hidden = messages.childElementCount > 0;
+}
+
+function resizeComposer() {
+  query.style.height = "0";
+  query.style.height = `${Math.min(query.scrollHeight, 160)}px`;
+  query.style.overflowY = query.scrollHeight > 160 ? "auto" : "hidden";
+}
+
+function setAppIcon(node, data) {
+  node.replaceChildren();
+  if (data.icon_type === "image" && data.icon_url) {
+    const image = document.createElement("img");
+    image.src = data.icon_url;
+    image.alt = "";
+    node.append(image);
+  } else {
+    node.textContent = data.icon || (data.title || byId("sidebar-title").textContent).charAt(0);
+  }
+  if (data.icon_background) node.style.backgroundColor = data.icon_background;
 }
 
 function controls() {
   const locked = busy || loading;
+  const send = byId("send-message");
+  const stop = byId("stop-generation");
   byId("new-conversation").disabled = locked;
-  byId("send-message").disabled = locked;
+  send.disabled = locked;
+  send.hidden = busy;
+  stop.hidden = !busy;
   query.disabled = locked;
-  byId("stop-generation").disabled = !busy || !taskId || stopping;
+  stop.disabled = !busy || !taskId || stopping;
   byId("older-messages").disabled = locked;
   byId("more-conversations").disabled = locked || listLoading;
   for (const button of conversations.querySelectorAll("button")) {
@@ -55,14 +84,57 @@ function post(url, body, signal) {
     body: JSON.stringify(body), signal});
 }
 
+async function loadSite() {
+  try {
+    const data = await (await request(app.dataset.siteUrl)).json();
+    if (data.title) {
+      byId("sidebar-title").textContent = data.title;
+      byId("bot-title").textContent = data.title;
+      document.title = `${data.title} · Flow Portal`;
+    }
+
+    const description = byId("bot-description");
+    description.textContent = data.description || "";
+    description.hidden = !data.description;
+
+    setAppIcon(byId("site-icon"), data);
+    setAppIcon(byId("empty-site-icon"), data);
+    assistantMark = data.icon_type === "emoji" && data.icon ? data.icon : (data.title || "Bot").charAt(0);
+    for (const label of messages.querySelectorAll(".message-assistant .message-avatar")) {
+      label.textContent = assistantMark;
+    }
+    if (data.chat_color_theme) app.style.setProperty("--chat-accent", data.chat_color_theme);
+    if (data.input_placeholder) query.placeholder = data.input_placeholder;
+
+    const copyright = byId("site-copyright");
+    copyright.textContent = data.copyright || "";
+    byId("sidebar-footer").hidden = !data.copyright;
+  } catch (_error) {
+    // Keep the Portal Bot settings when Dify WebApp settings are unavailable.
+  }
+}
+
 function message(role, text) {
   const node = document.createElement("article");
   node.className = `message message-${role}`;
+  node.setAttribute("aria-label", role === "user" ? "你的訊息" : "Bot 回覆");
   const label = document.createElement("strong");
-  label.textContent = role === "user" ? "你" : "Bot";
+  label.className = role === "user" ? "message-avatar message-user-avatar" : "message-avatar";
+  if (role === "user") {
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z");
+    icon.append(path);
+    label.append(icon);
+  } else {
+    label.textContent = assistantMark;
+  }
+  label.setAttribute("aria-hidden", "true");
   const content = document.createElement("div");
   content.textContent = text;
-  node.append(label, content);
+  if (role === "user") node.append(content, label);
+  else node.append(label, content);
   return {node, content};
 }
 
@@ -111,11 +183,12 @@ async function loadHistory(id, older = false) {
     const previousHeight = messages.scrollHeight;
     if (older) messages.prepend(fragment);
     else messages.replaceChildren(fragment);
+    updateEmptyState();
     conversationId = id;
     historyCursor = data.next_cursor;
     byId("older-messages").hidden = !data.has_more || !historyCursor;
     messages.scrollTop = older ? messages.scrollHeight - previousHeight : messages.scrollHeight;
-    notice("已載入歷史對話，可繼續傳送訊息。");
+    notice("");
   } catch (error) {
     notice(error.message, true);
   } finally {
@@ -130,14 +203,23 @@ byId("new-conversation").addEventListener("click", () => {
   historyCursor = "";
   taskId = "";
   messages.replaceChildren();
+  updateEmptyState();
   byId("older-messages").hidden = true;
   query.value = "";
-  notice("輸入訊息以開始新對話。");
+  resizeComposer();
+  notice("");
   controls();
   query.focus();
 });
 byId("more-conversations").addEventListener("click", () => loadConversations());
 byId("older-messages").addEventListener("click", () => loadHistory(conversationId, true));
+query.addEventListener("input", resizeComposer);
+query.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    byId("message-form").requestSubmit();
+  }
+});
 
 byId("message-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -152,6 +234,7 @@ byId("message-form").addEventListener("submit", async (event) => {
   messages.append(message("user", text).node);
   const reply = message("assistant", "");
   messages.append(reply.node);
+  updateEmptyState();
   notice("等待回覆…");
   let accepted = false;
   try {
@@ -160,6 +243,7 @@ byId("message-form").addEventListener("submit", async (event) => {
       throw new Error("未收到聊天串流，請重新登入或聯絡管理員。");
     }
     query.value = "";
+    resizeComposer();
     await consumeSSE(response.body, (chunk) => {
       if (chunk.conversation_id) conversationId = chunk.conversation_id;
       if (chunk.task_id) taskId = chunk.task_id;
@@ -216,4 +300,7 @@ byId("stop-generation").addEventListener("click", async () => {
 });
 
 window.addEventListener("pagehide", () => controller?.abort());
+updateEmptyState();
+resizeComposer();
+loadSite();
 loadConversations(true);

@@ -66,6 +66,13 @@ def api(view):
 
 @api
 @require_http_methods(["GET"])
+async def site(request, pk):
+    adapter = await resolve_context(request, pk)
+    return JsonResponse(await adapter.get_site())
+
+
+@api
+@require_http_methods(["GET"])
 async def conversations(request, pk):
     adapter = await resolve_context(request, pk)
     cursor = identifier(request.GET.get("last_id", ""), optional=True)

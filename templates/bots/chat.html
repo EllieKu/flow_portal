@@ -2,36 +2,54 @@
 {% load static %}
 
 {% block title %}{{ bot.name }} · Flow Portal{% endblock %}
+{% block header %}{% endblock %}
+{% block body_class %}chat-page{% endblock %}
 
 {% block content %}
-<a href="{% url 'bots:list' %}">返回 Bot 清單</a>
 <section id="chat-app" class="chat-layout" aria-labelledby="bot-title"
+         data-site-url="{% url 'chat:site' bot.pk %}"
          data-conversations-url="{% url 'chat:conversations' bot.pk %}"
          data-send-url="{% url 'chat:send' bot.pk %}"
          data-stop-url="{% url 'chat:stop' bot.pk %}">
-  <aside class="card history-panel" aria-label="歷史對話">
-    <button id="new-conversation" type="button">新增對話</button>
-    <h2>歷史對話</h2>
+  <aside class="history-panel" aria-label="歷史對話">
+    <div class="sidebar-brand">
+      <span id="site-icon" class="sidebar-app-icon" aria-hidden="true">{{ bot.name|first }}</span>
+      <strong id="sidebar-title">{{ bot.name }}</strong>
+    </div>
+    <button id="new-conversation" class="new-conversation" type="button">
+      <span aria-hidden="true">＋</span>
+      新對話
+    </button>
     <ul id="conversations" class="conversation-list"></ul>
     <button id="more-conversations" class="secondary" type="button" hidden>載入更多對話</button>
+    <div id="sidebar-footer" class="sidebar-footer" hidden>
+      <small id="site-copyright"></small>
+    </div>
   </aside>
-  <div class="card chat-panel">
-    <h1 id="bot-title">{{ bot.name }}</h1>
-    {% if bot.description %}<p class="bot-description">{{ bot.description }}</p>{% endif %}
+  <div class="chat-panel">
+    <div id="chat-empty" class="chat-empty">
+      <span id="empty-site-icon" class="chat-app-icon" aria-hidden="true">{{ bot.name|first }}</span>
+      <h1 id="bot-title">{{ bot.name }}</h1>
+      <p id="bot-description" class="bot-description"{% if not bot.description %} hidden{% endif %}>{{ bot.description }}</p>
+    </div>
     <button id="older-messages" class="secondary" type="button" hidden>載入更早訊息</button>
     <div id="messages" class="messages" role="log" aria-label="對話訊息" aria-live="polite"></div>
-    <p id="chat-status" class="muted" role="status">輸入訊息以開始新對話。</p>
-    <form id="message-form">
+    <p id="chat-status" class="muted" role="status" hidden></p>
+    <form id="message-form" class="message-composer">
       {% csrf_token %}
-      <label for="query">訊息</label>
-      <textarea id="query" name="query" rows="3" maxlength="10000" required></textarea>
+      <label class="sr-only" for="query">訊息</label>
+      <textarea id="query" name="query" rows="1" maxlength="10000" placeholder="輸入訊息…" required></textarea>
       <div class="chat-actions">
-        <button id="send-message" type="submit">送出</button>
-        <button id="stop-generation" class="secondary" type="button" disabled>停止生成</button>
+        <button id="send-message" class="composer-button" type="submit" title="送出訊息">
+          <span aria-hidden="true">↑</span><span class="sr-only">送出</span>
+        </button>
+        <button id="stop-generation" class="composer-button secondary" type="button" title="停止生成" disabled hidden>
+          <span aria-hidden="true">■</span><span class="sr-only">停止生成</span>
+        </button>
       </div>
     </form>
   </div>
 </section>
-<script type="module" src="{% static 'js/chat.js' %}"></script>
+<script type="module" src="{% static 'js/chat.js' %}?v=10"></script>
 {% endblock %}
 

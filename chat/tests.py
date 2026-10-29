@@ -76,6 +76,46 @@ class DifyAdapterTests(SimpleTestCase):
         self.assertNotIn("inputs", result["data"][0])
         self.assertEqual(result["next_cursor"], CONVERSATION)
 
+    def test_site_returns_only_safe_webapp_display_settings(self):
+        adapter = self.adapter(httpx.Response(200, json={
+            "title": "Support App",
+            "description": "Ask a question",
+            "icon_type": "emoji",
+            "icon": "🤖",
+            "icon_background": "#123ABC",
+            "icon_url": "https://assets.example.test/icon.png",
+            "chat_color_theme": "#17634D",
+            "input_placeholder": "Type here",
+            "copyright": "Example",
+            "private_setting": "must not leave the server",
+        }))
+
+        result = asyncio.run(adapter.get_site())
+
+        self.assertEqual(self.requests[0].url.path, "/v1/site")
+        self.assertEqual(result["title"], "Support App")
+        self.assertEqual(result["icon"], "🤖")
+        self.assertEqual(result["icon_background"], "#123ABC")
+        self.assertEqual(result["icon_url"], "https://assets.example.test/icon.png")
+        self.assertNotIn("private_setting", result)
+
+    def test_site_rejects_unsafe_display_values(self):
+        adapter = self.adapter(httpx.Response(200, json={
+            "title": ["not text"],
+            "icon_type": "html",
+            "icon_url": "javascript:alert(1)",
+            "icon_background": "red; display: none",
+            "chat_color_theme": "not-a-color",
+        }))
+
+        result = asyncio.run(adapter.get_site())
+
+        self.assertEqual(result["title"], "")
+        self.assertEqual(result["icon_type"], "")
+        self.assertEqual(result["icon_url"], "")
+        self.assertEqual(result["icon_background"], "")
+        self.assertEqual(result["chat_color_theme"], "")
+
     def test_history_is_chronological_and_cursor_points_to_oldest(self):
         adapter = self.adapter(httpx.Response(200, json={"data": [
             {"id": "new", "query": "q2", "answer": "a2", "created_at": 2},
@@ -217,6 +257,7 @@ class ChatViewTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.adapter = SimpleNamespace(
+            get_site=AsyncMock(return_value={"title": "Support App"}),
             list_conversations=AsyncMock(return_value={"data": [], "has_more": False}),
             list_messages=AsyncMock(return_value={"data": [], "has_more": False}),
             stop_generation=AsyncMock(return_value={"result": "success"}),
@@ -226,6 +267,9 @@ class ChatViewTests(SimpleTestCase):
         self.addCleanup(self.context.stop)
 
     def test_history_and_conversation_cursors_are_forwarded(self):
+        response = asyncio.run(views.site(self.factory.get("/"), 1))
+        self.assertEqual(response.status_code, 200)
+        self.adapter.get_site.assert_awaited_once_with()
         response = asyncio.run(views.conversations(self.factory.get("/", {"last_id": TASK}), 1))
         self.assertEqual(response.status_code, 200)
         self.adapter.list_conversations.assert_awaited_once_with(TASK)

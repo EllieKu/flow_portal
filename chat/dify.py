@@ -1,6 +1,8 @@
 """Dify's chat API, with no local conversation or generation state."""
 
 import json
+import re
+from urllib.parse import urlparse
 
 try:
     import httpx
@@ -103,6 +105,36 @@ class DifyAdapter:
                     "next_cursor": rows[-1]["id"] if rows else ""}
         except (KeyError, TypeError) as exc:
             raise DifyError() from exc
+
+    async def get_site(self):
+        data = await self.request("GET", "site")
+
+        def text_value(name, limit):
+            value = data.get(name)
+            return value[:limit] if isinstance(value, str) else ""
+
+        icon_type = data.get("icon_type")
+        if icon_type not in {"emoji", "image"}:
+            icon_type = ""
+        icon_url = text_value("icon_url", 2000)
+        if icon_url and urlparse(icon_url).scheme not in {"http", "https"}:
+            icon_url = ""
+
+        def color_value(name):
+            value = data.get(name)
+            return value if isinstance(value, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", value) else ""
+
+        return {
+            "title": text_value("title", 200),
+            "description": text_value("description", 2000),
+            "icon_type": icon_type,
+            "icon": text_value("icon", 100),
+            "icon_url": icon_url,
+            "icon_background": color_value("icon_background"),
+            "chat_color_theme": color_value("chat_color_theme"),
+            "input_placeholder": text_value("input_placeholder", 200),
+            "copyright": text_value("copyright", 500),
+        }
 
     async def list_messages(self, conversation_id, first_id=""):
         data = await self.request("GET", "messages", params={
