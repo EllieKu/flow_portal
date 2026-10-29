@@ -1,4 +1,8 @@
 import {consumeSSE} from "./sse.mjs";
+import {marked} from "../vendor/marked/marked.esm.js";
+import DOMPurify from "../vendor/dompurify/purify.es.mjs";
+
+marked.use({gfm: true, breaks: true});
 
 const app = document.getElementById("chat-app");
 const byId = (id) => document.getElementById(id);
@@ -22,6 +26,10 @@ function notice(text, error = false) {
   status.textContent = text;
   status.className = error ? "error" : "muted";
   status.hidden = !text;
+}
+
+function renderMarkdown(node, markdown) {
+  node.innerHTML = DOMPurify.sanitize(marked.parse(markdown));
 }
 
 function updateEmptyState() {
@@ -132,7 +140,14 @@ function message(role, text) {
   }
   label.setAttribute("aria-hidden", "true");
   const content = document.createElement("div");
-  content.textContent = text;
+  content.className = "message-content";
+  if (role === "assistant") {
+    content.classList.add("markdown-body");
+    content.dataset.markdown = text;
+    renderMarkdown(content, text);
+  } else {
+    content.textContent = text;
+  }
   if (role === "user") node.append(content, label);
   else node.append(label, content);
   return {node, content};
@@ -249,10 +264,12 @@ byId("message-form").addEventListener("submit", async (event) => {
       if (chunk.task_id) taskId = chunk.task_id;
       if (chunk.event === "start") accepted = true;
       if (chunk.event === "delta") {
-        reply.content.textContent += chunk.text;
+        reply.content.dataset.markdown += chunk.text;
+        renderMarkdown(reply.content, reply.content.dataset.markdown);
         notice("回覆中…");
       } else if (chunk.event === "replace") {
-        reply.content.textContent = chunk.text;
+        reply.content.dataset.markdown = chunk.text;
+        renderMarkdown(reply.content, chunk.text);
       } else if (chunk.event === "end") {
         notice("回覆完成。");
       } else if (chunk.event === "error") {

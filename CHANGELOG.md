@@ -11,6 +11,7 @@
 - 輸入區改為單行起始且可自動增高的圓角 textarea，支援 Enter 送出、Shift+Enter 換行，以及送出／停止按鈕依生成狀態切換。
 - 整體配色調整為 Dify Web App light theme 風格，並改善手機版聊天頁配置。
 - 新增受 Portal 授權保護的 Dify `/site` 代理，只回傳經驗證的顯示欄位；聊天頁使用 WebApp 的標題、描述、圖示、主題色、輸入提示與版權資訊，失敗時保留 Portal Bot 設定。
+- Bot 回覆與歷史訊息支援 Markdown，使用專案內固定版本的 Marked.js 解析並經 DOMPurify 清理；加入標題、清單、引用、程式碼、表格與圖片樣式，使用者訊息仍以純文字顯示。
 
 ### Dify 串接與聊天頁
 
