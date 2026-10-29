@@ -20,11 +20,11 @@ class BotAccessTests(TestCase):
         cls.other = User.objects.create_user(username="other")
         cls.group = Group.objects.create(name="Support")
         cls.user.groups.add(cls.group)
-        cls.personal = Bot.objects.create(name="Personal", api_key_env="DIFY_PERSONAL_KEY")
-        cls.shared = Bot.objects.create(name="Shared", api_key_env="DIFY_SHARED_KEY")
-        cls.hidden = Bot.objects.create(name="Hidden", api_key_env="DIFY_HIDDEN_KEY")
+        cls.personal = Bot.objects.create(name="Personal", api_key="app-personal-test-key")
+        cls.shared = Bot.objects.create(name="Shared", api_key="app-shared-test-key")
+        cls.hidden = Bot.objects.create(name="Hidden", api_key="app-hidden-test-key")
         cls.disabled = Bot.objects.create(
-            name="Disabled", api_key_env="DIFY_DISABLED_KEY", is_active=False
+            name="Disabled", api_key="app-disabled-test-key", is_active=False
         )
         cls.personal.allowed_users.add(cls.user)
         cls.shared.allowed_groups.add(cls.group)
@@ -150,7 +150,7 @@ class BotAccessTests(TestCase):
         self.personal.save()
         for url in [reverse("bots:list"), self.personal.get_absolute_url()]:
             response = self.client.get(url)
-            self.assertNotContains(response, "DIFY_PERSONAL_KEY")
+            self.assertNotContains(response, "app-personal-test-key")
             self.assertNotContains(response, "private-dify.example.test")
             self.assertIn("no-store", response.headers["Cache-Control"])
 
@@ -174,7 +174,7 @@ class BotAdminTests(TestCase):
             "description": "Support assistant",
             "is_active": "on",
             "api_base_url": "https://api.dify.ai/v1",
-            "api_key_env": "DIFY_SUPPORT_API_KEY",
+            "api_key": "app-support-test-key",
             "allowed_users": [self.user.pk],
             "allowed_groups": [self.group.pk],
             "_save": "Save",
@@ -183,6 +183,7 @@ class BotAdminTests(TestCase):
         bot = Bot.objects.get(name="Helpdesk")
         self.assertIn(self.user, bot.allowed_users.all())
         self.assertIn(self.group, bot.allowed_groups.all())
+        self.assertEqual(bot.api_key, "app-support-test-key")
 
     def test_user_without_admin_permission_cannot_create_bot(self):
         self.client.force_login(self.user)
@@ -192,11 +193,49 @@ class BotAdminTests(TestCase):
 
     def test_invalid_connection_configuration_is_rejected(self):
         for changes in [
-            {"api_key_env": "app-a-secret-key"},
             {"api_base_url": "ftp://example.com/v1"},
         ]:
-            bot = Bot(name="Invalid", api_key_env="DIFY_KEY")
+            bot = Bot(name="Invalid", api_key="app-test-key")
             for field, value in changes.items():
                 setattr(bot, field, value)
             with self.assertRaises(ValidationError):
                 bot.full_clean()
+
+    def bot_data(self, key):
+        return {
+            "name": "Helpdesk", "api_base_url": "https://api.dify.ai/v1",
+            "is_active": "on", "api_key": key, "_save": "Save",
+        }
+
+    def test_new_bot_requires_key(self):
+        response = self.client.post(reverse("admin:bots_bot_add"), self.bot_data(" "))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "請填寫 Dify 應用 API Key")
+        self.assertFalse(Bot.objects.exists())
+
+    def test_edit_hides_key_and_blank_preserves_existing_value(self):
+        bot = Bot.objects.create(name="Helpdesk", api_key="app-private-original")
+        url = reverse("admin:bots_bot_change", args=[bot.pk])
+        self.assertNotContains(self.client.get(url), "app-private-original")
+        response = self.client.post(url, self.bot_data(""))
+        self.assertEqual(response.status_code, 302)
+        bot.refresh_from_db()
+        self.assertEqual(bot.api_key, "app-private-original")
+
+    def test_key_can_be_replaced_without_exposing_it_in_html_or_log(self):
+        from django.contrib.admin.models import LogEntry
+        bot = Bot.objects.create(name="Helpdesk", api_key="app-original")
+        url = reverse("admin:bots_bot_change", args=[bot.pk])
+        response = self.client.post(url, self.bot_data("app-private-replacement"))
+        self.assertEqual(response.status_code, 302)
+        bot.refresh_from_db()
+        self.assertEqual(bot.api_key, "app-private-replacement")
+        self.assertNotContains(self.client.get(url), "app-private-replacement")
+        self.assertNotIn("app-private-replacement", LogEntry.objects.latest("pk").change_message)
+
+    def test_invalid_form_does_not_echo_submitted_key(self):
+        data = self.bot_data("app-private-submitted")
+        data["name"] = ""
+        response = self.client.post(reverse("admin:bots_bot_add"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "app-private-submitted")

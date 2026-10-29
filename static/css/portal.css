@@ -21,3 +21,22 @@ button { background: #17634d; color: white; border: 1px solid #17634d; border-ra
 .bot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 1rem; }
 .bot-grid h2 { margin-top: 0; font-size: 1.25rem; }
 .bot-description { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.chat-layout { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1rem; margin-top: 1rem; }
+.chat-layout .card { padding: 1.25rem; }
+.history-panel h2 { font-size: 1.1rem; }
+.conversation-list { list-style: none; padding: 0; max-height: 30rem; overflow-y: auto; }
+.conversation-list button { width: 100%; margin-bottom: .4rem; text-align: left; background: white; color: #19312c; border-color: #dce5e1; overflow-wrap: anywhere; }
+.conversation-list button[aria-current=true] { background: #e1f0e8; border-color: #17634d; }
+.messages { min-height: 12rem; height: 45vh; overflow-y: auto; margin-top: 1rem; }
+.message { padding: .9rem; margin-bottom: .75rem; border-radius: .5rem; background: #f4f7f6; }
+.message-user { background: #e1f0e8; }
+.message div { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; margin-top: .35rem; }
+.message[data-incomplete=true] { border: 1px dashed #a02828; }
+textarea { width: 100%; padding: .75rem; font: inherit; border: 1px solid #899b92; border-radius: .35rem; resize: vertical; }
+.chat-actions { display: flex; gap: .75rem; margin-top: .75rem; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+[hidden] { display: none !important; }
+@media (max-width: 700px) {
+  .chat-layout { grid-template-columns: 1fr; }
+  .conversation-list { max-height: 10rem; }
+}

@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.validators import RegexValidator, URLValidator
+from django.core.validators import URLValidator
 from django.db import models
 from django.urls import reverse
 
@@ -14,14 +14,11 @@ class Bot(models.Model):
         validators=[URLValidator(schemes=["https", "http"])],
         help_text="填入應用的 API base URL，例如 https://api.dify.ai/v1。",
     )
-    api_key_env = models.CharField(
-        "API Key 環境變數名稱",
-        max_length=100,
-        validators=[RegexValidator(
-            r"\A[A-Za-z_][A-Za-z0-9_]*\Z",
-            "請填入環境變數名稱，例如 DIFY_SUPPORT_API_KEY，不要貼入金鑰。",
-        )],
-        help_text="實際金鑰放在 .env 或部署環境，此處只填變數名稱。",
+    api_key = models.TextField(
+        "Dify API Key",
+        blank=True,
+        default="",
+        help_text="填入 Dify 應用金鑰；編輯時留白保留原本金鑰。",
     )
     allowed_users = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
