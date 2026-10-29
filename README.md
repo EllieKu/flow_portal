@@ -17,7 +17,7 @@ python manage.py createsuperuser
 聊天開發請使用 ASGI 伺服器：
 
 ```bash
-uvicorn config.asgi:application --host 127.0.0.1 --port 8002
+uvicorn config.asgi:application --host 0.0.0.0 --port 8002
 ```
 
 `runserver` 使用 WSGI，串流回覆可能等到生成完成後才一次顯示，因此只適合不需測試聊天串流的後台開發：

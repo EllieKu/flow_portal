@@ -2,7 +2,19 @@ import {consumeSSE} from "./sse.mjs";
 import {marked} from "../vendor/marked/marked.esm.js";
 import DOMPurify from "../vendor/dompurify/purify.es.mjs";
 
-marked.use({gfm: true, breaks: true});
+const imageBaseUrl = new URL("/", window.location.href);
+imageBaseUrl.port = "5001";
+
+marked.use({
+  gfm: true,
+  breaks: true,
+  walkTokens(token) {
+    if (token.type !== "image") return;
+    const href = token.href.trim();
+    if (!href || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(href)) return;
+    token.href = new URL(href, imageBaseUrl).href;
+  },
+});
 
 const app = document.getElementById("chat-app");
 const byId = (id) => document.getElementById(id);
